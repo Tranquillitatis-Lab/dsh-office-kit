@@ -3,7 +3,7 @@ import type { CSSProperties, PointerEvent, ReactElement } from 'react'
 import type { OFFICE_NS } from './constants'
 import type { AnnotationInjected, AnnotationRect, AnnotationSelection, PendingAnnotation } from './types'
 import { useEffect, useId, useRef, useState } from 'react'
-import { annotationPreview, canvasAt, canvasParagraphs, captureAnnotation, intersectRect, normalizedRegion, paddedRect, paragraphAtPoint, sendAnnotations, spreadsheetAt } from './annotation'
+import { annotationPreview, canvasAt, canvasParagraphs, captureAnnotation, intersectRect, normalizedRegion, paddedRect, paragraphAtPoint, parseSheetRange, sendAnnotations, spreadsheetAt } from './annotation'
 import { ANNOTATION_CANVAS_SELECTOR, ANNOTATION_HOLD_MS, ANNOTATION_MAX_ITEMS, ANNOTATION_MAX_TEXT, ANNOTATION_MIN_REGION, ANNOTATION_SPREADSHEET_CANVAS_SELECTOR } from './constants'
 import { fillTemplate } from './quote'
 
@@ -26,6 +26,7 @@ function AnnotationTool({ absolutePath, pendingAnnotations, intake, inputActions
   const [hover, setHover] = useState<AnnotationSelection>()
   const [selection, setSelection] = useState<AnnotationSelection>()
   const [requirement, setRequirement] = useState('')
+  const [cellRange, setCellRange] = useState('')
   const [image, setImage] = useState<File>()
   const [capturing, setCapturing] = useState(false)
   const [dragging, setDragging] = useState(false)
@@ -37,6 +38,9 @@ function AnnotationTool({ absolutePath, pendingAnnotations, intake, inputActions
   const limits = useProjection('imageLimits')
   const isPdf = /\.pdf$/iu.test(absolutePath)
   const isSpreadsheet = /\.xlsx$/iu.test(absolutePath)
+  /** A typed A1 address, the only way to name cells: the preview canvas reports no selection. */
+  const cellAddress = isSpreadsheet ? parseSheetRange(cellRange) : undefined
+  const cellRangeInvalid = isSpreadsheet && cellRange.trim().length > 0 && !cellAddress
   /** Formats whose page/region is only legible as a screenshot attachment. */
   const captures = isPdf || isSpreadsheet
   const canvasSelector = isSpreadsheet ? ANNOTATION_SPREADSHEET_CANVAS_SELECTOR : ANNOTATION_CANVAS_SELECTOR
@@ -60,6 +64,7 @@ function AnnotationTool({ absolutePath, pendingAnnotations, intake, inputActions
     setImage(undefined)
     setCapturing(false)
     setRequirement('')
+    setCellRange('')
   }
 
   function cancelGesture(): void {
@@ -292,9 +297,11 @@ function AnnotationTool({ absolutePath, pendingAnnotations, intake, inputActions
       text: selection.text.slice(0, ANNOTATION_MAX_TEXT),
       requirement: requirement.trim(),
       region: selection.region,
+      ...(cellAddress?.sheet ? { sheet: cellAddress.sheet } : {}),
+      ...(cellAddress ? { range: cellAddress.range } : {}),
       imageName: image?.name,
-      // The workbook preview exposes no selection API we control, so the region stays raw.
-      ...(isSpreadsheet ? { unmapped: true as const } : {}),
+      // A region without a typed cell address stays raw: the preview exposes no selection API.
+      ...(isSpreadsheet && !cellAddress ? { unmapped: true as const } : {}),
     }
     setItems(previous => [...previous, { annotation, file: image }])
     dismiss()
@@ -420,6 +427,22 @@ function AnnotationTool({ absolutePath, pendingAnnotations, intake, inputActions
             add()
           }}
         >
+          {isSpreadsheet && (
+            <input
+              type="text"
+              aria-label={t('annotation.sheetRange')}
+              placeholder={t('annotation.sheetRangePlaceholder')}
+              value={cellRange}
+              maxLength={100}
+              aria-invalid={cellRangeInvalid || undefined}
+              onChange={event => setCellRange(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && event.nativeEvent.isComposing)
+                  event.preventDefault()
+              }}
+            />
+          )}
+          {cellRangeInvalid && <p role="alert">{t('annotation.sheetRangeInvalid')}</p>}
           <input
             type="text"
             aria-label={t('annotation.placeholder')}
@@ -432,7 +455,7 @@ function AnnotationTool({ absolutePath, pendingAnnotations, intake, inputActions
                 event.preventDefault()
             }}
           />
-          <button type="submit" aria-label={t(capturing ? 'annotation.capturing' : 'annotation.add')} title={t(capturing ? 'annotation.capturing' : 'annotation.add')} disabled={!requirement.trim() || capturing || (captures && !image) || items.length >= ANNOTATION_MAX_ITEMS}>
+          <button type="submit" aria-label={t(capturing ? 'annotation.capturing' : 'annotation.add')} title={t(capturing ? 'annotation.capturing' : 'annotation.add')} disabled={!requirement.trim() || cellRangeInvalid || capturing || (captures && !image) || items.length >= ANNOTATION_MAX_ITEMS}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12 4 4L19 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </button>
         </form>

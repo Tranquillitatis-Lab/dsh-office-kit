@@ -107,6 +107,66 @@ export function canvasParagraphs(canvas: HTMLCanvasElement): AnnotationParagraph
   return groupParagraphs(runs)
 }
 
+/** A cell address typed for an xlsx region: `A22`, `A22:C30`, `Pipeline!D2:D13`. */
+export interface SheetRangeAddress {
+  readonly sheet?: string
+  readonly range: string
+}
+
+const SHEET_RANGE_RE = /^([a-z]{1,3}[1-9]\d*)(?::([a-z]{1,3}[1-9]\d*))?$/i
+
+/**
+ * Parse the cell address the user typed for a spreadsheet region.
+ *
+ * The xlsx preview paints a canvas and exposes no selection API, so a dragged
+ * region cannot be turned into a cell without inventing one. This only accepts
+ * what the user states in A1 notation; anything else returns undefined and the
+ * annotation keeps its `unmapped` form.
+ */
+export function parseSheetRange(value: string): SheetRangeAddress | undefined {
+  const trimmed = value.trim()
+  if (!trimmed || trimmed.length > 100)
+    return undefined
+  const [sheetPart, rangePart] = splitSheetQualifier(trimmed)
+  const sheet = sheetPart === undefined ? undefined : parseSheetName(sheetPart)
+  if (sheetPart !== undefined && !sheet)
+    return undefined
+  const match = SHEET_RANGE_RE.exec(rangePart)
+  if (!match)
+    return undefined
+  const start = match[1]!.toUpperCase()
+  const end = match[2]?.toUpperCase()
+  return { ...sheet ? { sheet } : {}, range: end ? `${start}:${end}` : start }
+}
+
+/** Split `Sheet!A1` without breaking a quoted worksheet name that contains `!`. */
+function splitSheetQualifier(value: string): [string | undefined, string] {
+  if (value.startsWith('\'') || value.startsWith('"')) {
+    const quote = value[0]!
+    let index = 1
+    while (index < value.length) {
+      const next = value.indexOf(quote, index)
+      if (next < 0)
+        return [undefined, value]
+      if (value[next + 1] === quote) {
+        index = next + 2
+        continue
+      }
+      return value[next + 1] === '!' ? [value.slice(0, next + 1), value.slice(next + 2)] : [undefined, value]
+    }
+    return [undefined, value]
+  }
+  const bang = value.indexOf('!')
+  return bang < 0 ? [undefined, value] : [value.slice(0, bang), value.slice(bang + 1)]
+}
+
+function parseSheetName(value: string): string | undefined {
+  const trimmed = value.trim()
+  const quoted = /^'(.*)'$/su.exec(trimmed) ?? /^"(.*)"$/su.exec(trimmed)
+  const name = (quoted ? quoted[1]!.replace(/''/gu, '\'') : trimmed).trim()
+  return name || undefined
+}
+
 /** Slot outlets are display:contents wrappers, not the document header itself. */
 export function annotationPreview(anchor: HTMLElement): { header: HTMLElement, root: HTMLElement } | undefined {
   let header = anchor.parentElement

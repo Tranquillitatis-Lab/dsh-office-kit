@@ -10,7 +10,7 @@ emits.
 | pdf | `target`, `fileName`, `page`, `text`, `requirement`, `region`, `imageName` | 1-based page of the PDF itself |
 | docx | `target`, `fileName`, `page`, `text`, `requirement`, `region` | page of the rendered PDF preview, not a Word page |
 | pptx | `target`, `fileName`, `page`, `text`, `requirement`, `region` | rendered PDF page; one slide per page, so page N is slide N |
-| xlsx | `target`, `fileName`, `text: ""`, `requirement`, `region`, `imageName`, `unmapped: true` | no `page`, no `sheet`, no `range` |
+| xlsx | `target`, `fileName`, `text: ""`, `requirement`, `region`, `imageName`, plus either `sheet` + `range` (user typed a cell or range) or `unmapped: true` | no `page`; `sheet`/`range` only when the user stated them |
 
 - `target` and `fileName` name the file.
 - `region` is normalised 0–1 against the rendered preview page the user drew on.
@@ -164,9 +164,12 @@ the run or shorten the text rather than leaving it clipped.
 
 ## xlsx — no cell reference, so resolve it yourself and say so
 
-xlsx items are always `unmapped: true` with `text: ""`: you get a region, a
-screenshot in `imageName`, and a requirement — no page, no sheet, no A1 range.
-Resolve the sheet and cells from evidence, never invent them.
+xlsx items carry `text: ""`: you get a region, a screenshot in `imageName`, and a
+requirement — no page. The annotation form also accepts a typed cell address, so
+an item may instead carry `sheet` and `range` (for example `"range": "D2:D13"`,
+optionally with `"sheet": "Pipeline"`). When it does, apply the edit to those
+cells. When the item is `unmapped: true`, resolve the sheet and cells from
+evidence, never invent them.
 
 1. **Look at the screenshot.** `read_image` the `imageName` attachment; note
    headers, row labels, and values in the region. With no screenshot you have
