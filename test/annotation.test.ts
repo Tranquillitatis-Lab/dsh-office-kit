@@ -1,7 +1,7 @@
 import type { ComposerAttachment, InputActions, UserTextTransformContext } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { AnnotationImageLimits, AnnotationIntake, AnnotationParagraph, AnnotationTextRun, OfficeAnnotation } from '../src/client/types'
 import { describe, expect, it, vi } from 'vitest'
-import { annotationPopoverPosition, annotationPreview, annotationRule, captureAnnotation, containsPoint, groupParagraphs, intersectRect, normalizedRegion, paddedRect, paragraphAtPoint, sendAnnotations, serializeAnnotations, spreadsheetAt } from '../src/client/annotation'
+import { annotationPopoverPosition, annotationPreview, annotationRule, captureAnnotation, containsPoint, groupParagraphs, intersectRect, normalizedRegion, paddedRect, paragraphAtPoint, parseSheetRange, sendAnnotations, serializeAnnotations, spreadsheetAt } from '../src/client/annotation'
 import { ANNOTATION_CLOSE, ANNOTATION_MAX_ITEMS, ANNOTATION_MAX_PAYLOAD, ANNOTATION_MAX_TEXT, ANNOTATION_NODE, ANNOTATION_OPEN, ANNOTATION_SPREADSHEET_CANVAS_SELECTOR } from '../src/client/constants'
 
 const ANNOTATION: OfficeAnnotation = {
@@ -413,5 +413,24 @@ describe('annotation composer transaction', () => {
     expect(batch.intake.release).not.toHaveBeenCalled()
     expect(batch.inputActions.removeAttachment).not.toHaveBeenCalled()
     expect(batch.inputActions.setDraft).not.toHaveBeenCalled()
+  })
+})
+
+describe('parseSheetRange', () => {
+  it('accepts a cell or range without a worksheet', () => {
+    expect(parseSheetRange('A22')).toEqual({ range: 'A22' })
+    expect(parseSheetRange('a22:c30')).toEqual({ range: 'A22:C30' })
+  })
+
+  it('accepts a worksheet qualifier with or without quotes', () => {
+    expect(parseSheetRange('Pipeline!D2:D13')).toEqual({ sheet: 'Pipeline', range: 'D2:D13' })
+    expect(parseSheetRange('\'Q1 sales\'!$A$1')).toBeUndefined()
+    expect(parseSheetRange('\'Q1!sales\'!A1')).toEqual({ sheet: 'Q1!sales', range: 'A1' })
+    expect(parseSheetRange('\'It\'\'s\'!B2')).toEqual({ sheet: 'It\'s', range: 'B2' })
+  })
+
+  it('rejects anything that is not A1 notation', () => {
+    for (const value of ['', '   ', 'A', '22', 'A0', 'AAAA1', 'A22:', 'A22:B', 'Sheet!', '!A22', 'A22 B30', 'A22:B30:C40'])
+      expect(parseSheetRange(value)).toBeUndefined()
   })
 })

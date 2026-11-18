@@ -63,6 +63,9 @@ const zh = {
   'annotation.tooLarge': '标注内容过长，请减少后重试',
   'annotation.emptyPage': '页面尚未渲染，请重试',
   'annotation.emptyRegion': '请选择页面内的区域',
+  'annotation.sheetRange': '单元格或区域（可选）',
+  'annotation.sheetRangePlaceholder': '如 Pipeline!D2:D13 或 A22',
+  'annotation.sheetRangeInvalid': '单元格地址格式不对，用 A22、A22:C30 或 Sheet!A22 这种写法',
 } as const
 
 const en: Record<keyof typeof zh, string> = {
@@ -96,6 +99,9 @@ const en: Record<keyof typeof zh, string> = {
   'annotation.tooLarge': 'Annotations are too long; remove some and retry',
   'annotation.emptyPage': 'The page has not rendered yet; please retry',
   'annotation.emptyRegion': 'Select a region inside the page',
+  'annotation.sheetRange': 'Cell or range (optional)',
+  'annotation.sheetRangePlaceholder': 'e.g. Pipeline!D2:D13 or A22',
+  'annotation.sheetRangeInvalid': 'Cell address must look like A22, A22:C30, or Sheet!A22',
 }
 
 interface OfficeSkillSummary {
