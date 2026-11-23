@@ -14,7 +14,24 @@ The user drags a box on the rendered workbook and types a requirement. The paylo
 }
 ```
 
-There is no `page`, no `sheet`, and no `range`: the preview client cannot turn a pixel rectangle into a cell address and will not fake one. Read it as "look at this area of this sheet and do this", not as a cell reference.
+There is no `page`, and no `sheet`/`range`: the preview client cannot turn a pixel rectangle into a cell address and will not fake one. Read it as "look at this area of this sheet and do this", not as a cell reference.
+
+When the user typed the optional cell field, the same item instead carries the stated address and no `unmapped`:
+
+```json
+{
+  "target": "book.xlsx",
+  "fileName": "book.xlsx",
+  "sheet": "Pipeline",
+  "range": "D2:D13",
+  "text": "",
+  "requirement": "make this column currency",
+  "region": { "left": 0.42, "top": 0.51, "width": 0.18, "height": 0.30 },
+  "imageName": "book-page-1.png"
+}
+```
+
+Then edit those cells directly. The screenshot still tells you what the region looked like, but `range` is the authority; if the screenshot and the address disagree, say so before editing.
 
 ## Procedure
 
